@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Liquid — Spend your tokenized stocks</title>
+<style>
+  :root{
+    --ink:#0b0e11;
+    --panel:#12161b;
+    --panel-raised:#171c22;
+    --hair:#262d35;
+    --paper:#f1ede4;
+    --paper-dim:#a8a293;
+    --teal:#3ea88f;
+    --teal-dim:#2a5d51;
+    --amber:#e8a33d;
+    --violet:#9b87f5;
+    --red:#d97066;
+    font-size:16px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--ink);
+    color:var(--paper);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+  .headline{
+    font-family:Georgia,"Iowan Old Style","Palatino Linotype",serif;
+    font-weight:600;
+    letter-spacing:-0.01em;
+  }
+  .mono{
+    font-family:ui-monospace,"SF Mono","Roboto Mono",Menlo,Consolas,monospace;
+    font-variant-numeric:tabular-nums;
+  }
+  .app{
+    max-width:920px;
+    margin:0 auto;
+    padding:40px 24px 80px;
+  }
+  .topbar{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    margin-bottom:36px;
+    padding-bottom:20px;
+    border-bottom:1px solid var(--hair);
+  }
+  .wordmark{
+    font-size:22px;
+    display:flex;
+    align-items:baseline;
+    gap:10px;
+  }
+  .wordmark .dot{
+    width:8px;height:8px;border-radius:50%;
+    background:var(--teal);
+    display:inline-block;
+    transform:translateY(-2px);
+  }
+  .wordmark small{
+    font-family:-apple-system,sans-serif;
+    font-size:12px;
+    color:var(--paper-dim);
+    font-weight:400;
+  }
+  .wallet-chip{
+    font-size:12px;
+    color:var(--paper-dim);
+    border:1px solid var(--hair);
+    padding:6px 12px;
+    border-radius:20px;
+  }
+  .wallet-chip .mono{color:var(--paper);}
+
+  .layout{
+    display:grid;
+    grid-template-columns:1fr 300px;
+    gap:28px;
+  }
+  @media (max-width:720px){
+    .layout{grid-template-columns:1fr;}
+  }
+
+  .spend-card{
+    background:linear-gradient(165deg,var(--panel-raised),var(--panel));
+    border:1px solid var(--hair);
+    border-radius:14px;
+    padding:32px;
+    position:relative;
+    overflow:hidden;
+  }
+  .eyebrow{
+    font-size:13px;
+    color:var(--paper-dim);
+    margin-bottom:6px;
+  }
+  .spendable{
+    font-size:15px;
+    color:var(--paper-dim);
+    margin-bottom:28px;
+  }
+  .spendable .mono{color:var(--teal);font-size:15px;}
+
+  .amount-row{
+    display:flex;
+    align-items:flex-end;
+    gap:6px;
+    margin-bottom:28px;
+  }
+  .currency{
+    font-size:40px;
+    color:var(--paper-dim);
+    padding-bottom:6px;
+  }
+  #amount{
+    background:none;
+    border:none;
+    color:var(--paper);
+    font-size:64px;
+    width:100%;
+    outline:none;
+    font-family:ui-monospace,"SF Mono","Roboto Mono",Menlo,Consolas,monospace;
+    font-variant-numeric:tabular-nums;
+  }
+  #amount::placeholder{color:#39424b;}
+
+  .quick-amounts{
+    display:flex;
+    gap:8px;
+    margin-bottom:28px;
+  }
+  .quick-amounts button{
+    background:none;
+    border:1px solid var(--hair);
+    color:var(--paper-dim);
+    padding:6px 14px;
+    border-radius:20px;
+    font-size:13px;
+    cursor:pointer;
+    font-family:inherit;
+  }
+  .quick-amounts button:hover{border-color:var(--teal-dim);color:var(--paper);}
+
+  .source-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:14px 0;
+    border-top:1px solid var(--hair);
+    font-size:14px;
+  }
+  .source-row .label{color:var(--paper-dim);}
+  .source-select{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    cursor:pointer;
+  }
+  .ticker-dot{width:6px;height:6px;border-radius:50%;background:var(--violet);}
+
+  .spend-btn{
+    width:100%;
+    margin-top:20px;
+    padding:16px;
+    border-radius:10px;
+    border:none;
+    background:var(--teal);
+    color:#08201b;
+    font-size:16px;
+    font-weight:600;
+    cursor:pointer;
+    font-family:inherit;
+    transition:transform .08s ease;
+  }
+  .spend-btn:active{transform:scale(0.98);}
+  .spend-btn:disabled{background:#2a333b;color:#5b6570;cursor:not-allowed;}
+
+  .flow{
+    margin-top:22px;
+    border-top:1px solid var(--hair);
+    padding-top:20px;
+    display:none;
+  }
+  .flow.active{display:block;}
+  .flow-step{
+    display:flex;
+    gap:12px;
+    align-items:flex-start;
+    padding:9px 0;
+    font-size:14px;
+    color:var(--paper-dim);
+    opacity:0.35;
+  }
+  .flow-step.done{opacity:1;color:var(--paper);}
+  .flow-step .mark{
+    width:16px;height:16px;
+    border-radius:50%;
+    border:1.5px solid var(--hair);
+    flex:none;
+    margin-top:2px;
+    display:flex;align-items:center;justify-content:center;
+    font-size:10px;
+  }
+  .flow-step.done .mark{
+    background:var(--teal);
+    border-color:var(--teal);
+    color:#08201b;
+  }
+  .flow-step .t{
+    margin-left:auto;
+    font-size:12px;
+    color:var(--paper-dim);
+  }
+
+  .result{
+    display:none;
+    margin-top:16px;
+    padding:16px;
+    border-radius:10px;
+    background:rgba(62,168,143,0.08);
+    border:1px solid var(--teal-dim);
+    font-size:13px;
+    color:var(--paper-dim);
+    line-height:1.6;
+  }
+  .result.active{display:block;}
+  .result strong{color:var(--paper);}
+
+  .sidebar{
+    display:flex;
+    flex-direction:column;
+    gap:16px;
+  }
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--hair);
+    border-radius:14px;
+    padding:20px;
+  }
+  .panel h3{
+    margin:0 0 14px;
+    font-size:13px;
+    font-weight:400;
+    color:var(--paper-dim);
+    letter-spacing:0.01em;
+  }
+  .holding{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:10px 0;
+    border-bottom:1px solid var(--hair);
+  }
+  .holding:last-child{border-bottom:none;}
+  .holding .name{
+    display:flex;
+    flex-direction:column;
+    gap:2px;
+  }
+  .holding .sym{font-size:14px;font-weight:600;}
+  .holding .qty{font-size:12px;color:var(--paper-dim);}
+  .holding .val{text-align:right;}
+  .holding .val .price{font-size:14px;}
+  .holding .val .chg{font-size:12px;}
+  .up{color:var(--teal);}
+  .down{color:var(--red);}
+
+  .credit-line{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    font-size:13px;
+  }
+  .credit-line .avail{color:var(--paper-dim);font-size:12px;margin-top:4px;}
+  .bar{
+    height:6px;
+    background:var(--hair);
+    border-radius:3px;
+    margin-top:10px;
+    overflow:hidden;
+  }
+  .bar-fill{
+    height:100%;
+    width:18%;
+    background:var(--amber);
+    border-radius:3px;
+  }
+
+  .ledger-entry{
+    font-size:12px;
+    color:var(--paper-dim);
+    padding:8px 0;
+    border-bottom:1px solid var(--hair);
+    display:flex;
+    justify-content:space-between;
+  }
+  .ledger-entry:last-child{border-bottom:none;}
+  .ledger-entry .m{color:var(--paper);}
+
+  .note{
+    font-size:12px;
+    color:#5b6570;
+    margin-top:28px;
+    line-height:1.6;
+    max-width:520px;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="topbar">
+    <div class="wordmark">
+      <span class="dot"></span>
+      <span class="headline">Liquid</span>
+      <small>spend your portfolio, not your position</small>
+    </div>
+    <div class="wallet-chip">wallet <span class="mono">7xKp…4mQ2</span></div>
+  </div>
+
+  <div class="layout">
+
+    <div class="spend-card">
+      <div class="eyebrow">Pay merchant</div>
+      <div class="spendable">Spendable now, without selling: <span class="mono">$4,812.06</span></div>
+
+      <div class="amount-row">
+        <span class="currency">$</span>
+        <input id="amount" class="mono" type="text" inputmode="decimal" placeholder="0.00" value="86.40" />
+      </div>
+
+      <div class="quick-amounts">
+        <button onclick="setAmount(12.50)">$12.50</button>
+        <button onclick="setAmount(48.00)">$48</button>
+        <button onclick="setAmount(86.40)">$86.40</button>
+        <button onclick="setAmount(220.00)">$220</button>
+      </div>
+
+      <div class="source-row">
+        <span class="label">Funding source</span>
+        <span class="source-select">
+          <span class="ticker-dot"></span>
+          <span class="mono">NVDAx</span>
+          <span style="color:var(--paper-dim)">0.412 shares</span>
+        </span>
+      </div>
+      <div class="source-row" style="border-top:none;padding-top:0;">
+        <span class="label">Route</span>
+        <span class="mono" style="color:var(--paper-dim);font-size:13px;">NVDAx → USDC via Jupiter</span>
+      </div>
+
+      <button class="spend-btn" id="spendBtn" onclick="runFlow()">Spend $86.40</button>
+
+      <div class="flow" id="flow">
+        <div class="flow-step" id="s1"><div class="mark"></div><div>Quoting swap route across Solana DEXs</div><div class="t" id="t1"></div></div>
+        <div class="flow-step" id="s2"><div class="mark"></div><div>Signing collateral release for 0.0071 NVDAx</div><div class="t" id="t2"></div></div>
+        <div class="flow-step" id="s3"><div class="mark"></div><div>Swapping NVDAx → USDC on-chain</div><div class="t" id="t3"></div></div>
+        <div class="flow-step" id="s4"><div class="mark"></div><div>Authorizing card settlement</div><div class="t" id="t4"></div></div>
+      </div>
+
+      <div class="result" id="result">
+        Paid <strong>$86.40</strong> to <strong>Merchant</strong>. Funded by selling <strong>0.0071 NVDAx</strong> (0.14% of your position) at the on-chain oracle price. Settled in <strong>1 Solana block</strong>. The other 99.86% of your NVDA exposure was never touched.
+      </div>
+
+      <div class="note">Demo simulates on-chain timing and routing for judging purposes. Production flow signs a real transaction against a Solana DEX aggregator and a collateralized-lending program; see repo for the program design.</div>
+    </div>
+
+    <div class="sidebar">
+      <div class="panel">
+        <h3>Portfolio</h3>
+        <div class="holding">
+          <div class="name"><span class="sym">NVDAx</span><span class="qty">5.02 sh</span></div>
+          <div class="val"><div class="price mono">$609.44</div><div class="chg up">+1.8%</div></div>
+        </div>
+        <div class="holding">
+          <div class="name"><span class="sym">AAPLx</span><span class="qty">12.10 sh</span></div>
+          <div class="val"><div class="price mono">$2,713.83</div><div class="chg down">−0.4%</div></div>
+        </div>
+        <div class="holding">
+          <div class="name"><span class="sym">TSLAx</span><span class="qty">3.44 sh</span></div>
+          <div class="val"><div class="price mono">$888.02</div><div class="chg up">+3.1%</div></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3>Credit line</h3>
+        <div class="credit-line">
+          <span>Borrowed against holdings</span>
+          <span class="mono">$740 / $4,000</span>
+        </div>
+        <div class="bar"><div class="bar-fill"></div></div>
+        <div class="avail">Collateralized at 32% LTV · rate 6.1%</div>
+      </div>
+
+      <div class="panel">
+        <h3>Recent ledger</h3>
+        <div class="ledger-entry"><span class="m">Merchant — coffee</span><span class="mono">−$6.20</span></div>
+        <div class="ledger-entry"><span class="m">Merchant — groceries</span><span class="mono">−$61.90</span></div>
+        <div class="ledger-entry"><span class="m">Dividend, AAPLx</span><span class="mono">+$3.40</span></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+function setAmount(v){
+  document.getElementById('amount').value = v.toFixed(2);
+  document.getElementById('spendBtn').innerText = 'Spend $' + v.toFixed(2);
+}
+document.getElementById('amount').addEventListener('input', (e)=>{
+  const v = parseFloat(e.target.value) || 0;
+  document.getElementById('spendBtn').innerText = 'Spend $' + v.toFixed(2);
+});
+
+let running = false;
+function runFlow(){
+  if(running) return;
+  running = true;
+  const btn = document.getElementById('spendBtn');
+  btn.disabled = true;
+  document.getElementById('result').classList.remove('active');
+  document.getElementById('flow').classList.add('active');
+  ['s1','s2','s3','s4'].forEach(id=>{
+    document.getElementById(id).classList.remove('done');
+    document.getElementById(id.replace('s','t')).innerText = '';
+  });
+
+  const steps = ['s1','s2','s3','s4'];
+  const times = ['210ms','80ms','390ms','140ms'];
+  let i = 0;
+  function next(){
+    if(i > 0){
+      document.getElementById(steps[i-1]).innerHTML =
+        '<div class="mark">✓</div>' + document.getElementById(steps[i-1]).innerHTML.split('</div>').slice(1).join('</div>');
+      document.getElementById(steps[i-1]).classList.add('done');
+      document.getElementById('t'+i).innerText = times[i-1];
+    }
+    if(i < steps.length){
+      i++;
+      setTimeout(next, 420);
+    } else {
+      document.getElementById('result').classList.add('active');
+      btn.disabled = false;
+      running = false;
+    }
+  }
+  next();
+}
+</script>
+</body>
+</html>
